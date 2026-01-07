@@ -6,6 +6,8 @@ __pycache__/
 # Raw datasets (never commit)
 data/raw/
 *.jsonl
+!data/raw/**/.gitkeep
+# If you have other raw data file types, add them here
 
 
 # C extensions
