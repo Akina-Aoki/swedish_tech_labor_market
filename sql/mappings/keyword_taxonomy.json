@@ -1,0 +1,52 @@
+{
+  "__config__": {
+    "exclude_phrases": [
+      "it-support", "it support", "helpdesk", "servicedesk",
+      "supporttekniker", "drifttekniker", "1st line", "2nd line",
+      "kundsupport", "onsite support", "fälttekniker", "desktop support"
+    ],
+    "weak_hits": [
+      "api", "server", "integration", "platform", "microsoft", "ai"
+    ]
+  },
+  "data_engineering": [
+    "data engineer", "data engineering", "dataingenjör", "data engineerare",
+    "etl", "elt", "pipelines", "pipeline", "datapipeline", "datapipelines",
+    "airflow", "dbt", "spark", "pyspark", "kafka", "streaming",
+    "datalake", "data lake", "lakehouse", "databricks",
+    "sql", "postgresql", "mysql", "snowflake", "bigquery", "redshift",
+    "python", "pandas"
+  ],
+  "analytics_bi": [
+    "bi", "business intelligence", "data analyst", "dataanalytiker",
+    "analytics", "analys", "dashboard", "rapport", "reporting",
+    "power bi", "tableau", "qlik", "looker",
+    "sql", "databas"
+  ],
+  "ml_ai": [
+    "machine learning", "ml", "ai", "artificial intelligence",
+    "model", "modell", "training", "träning",
+    "tensorflow", "pytorch", "scikit-learn",
+    "mle", "ml engineer", "data scientist", "datascientist",
+    "generative ai", "llm"
+  ],
+  "platform_data": [
+    "azure", "aws", "gcp",
+    "kubernetes", "docker", "terraform",
+    "devops", "ci/cd",
+    "data platform", "dataplattform", "plattform",
+    "observability", "monitoring", "logging"
+  ],
+  "backend_dev": [
+    "backend", "back end", "server", "api", "microservices", "integration",
+    "java", "spring", ".net", "c#", "node", "node.js"
+  ],
+  "frontend_dev": [
+    "frontend", "front end",
+    "javascript", "typescript", "react", "vue", "angular"
+  ],
+  "security": [
+    "security", "iam", "identity", "oauth", "sso",
+    "zero trust", "soc", "siem", "splunk"
+  ]
+}
