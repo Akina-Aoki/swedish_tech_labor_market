@@ -236,10 +236,10 @@ if __name__ == "__main__":
     # Paths
     BASE_DIR = Path(__file__).parent.parent.parent  # Anpassa om det behövs
     # Justera sökvägarna om vi flyttar/kör från 'src/transform' eller root
-    IN_FILE = Path("data/raw/2025_full_year.jsonl")
+    IN_FILE = Path("data/raw/2020_full_year.jsonl")
     TAX_FILE = Path("sql/mappings/keyword_taxonomy.json")
 
-    OUT_RAW = Path("data/clean/af/af_ads_datait_full_year.jsonl")
-    OUT_FOCUS = Path("data/clean/af/af_ads_focus_full_year.jsonl")
+    OUT_RAW = Path("data/clean/af/af_ads_datait_full_year_2020.jsonl")
+    OUT_FOCUS = Path("data/clean/af/af_ads_focus_full_year_2020.jsonl")
 
     process_ads(IN_FILE, OUT_RAW, OUT_FOCUS, TAX_FILE)

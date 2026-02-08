@@ -14,6 +14,8 @@ data/clean/
 data/exports/
 data/tmp/
 data/cache/
+# Allow the Master Dataset (Silver Layer)
+!data/clean/af/all_years_focus_master.jsonl
 
 # Allow small, anonymized samples
 !data/samples/
