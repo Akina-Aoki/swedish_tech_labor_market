@@ -256,4 +256,4 @@ if __name__ == "__main__":
         process_ads(in_file, out_raw, out_focus, TAX_FILE)
 
     print("\n ALL YEARS PROCESSED!")
-    print("Next step: Run 'cat data/clean/af/af_ads_focus_full_year_*.jsonl > data/clean/af/all_years_focus_master.jsonl'")
+    print("Next step: Run 'cat data/clean/af/af_ads_focus_full_year_*.jsonl > data/clean/af/all_years_focus_master.jsonl'") 
