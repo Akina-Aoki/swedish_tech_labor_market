@@ -8,10 +8,12 @@ from typing import Any, Dict, Iterable, List, Tuple, Set
 from tqdm import tqdm
 
 """
-Syfte: Detta skript agerar 'silver Layer' i vår pipeline. 
-Det tar rådata (JSONL) från Arbetsförmedlingen, filtrerar ut irrelevanta annonser och taggar upp kompetenser (skills) baserat på vår taxonomi. 
-Input: data/raw/2025_enriched.jsonl 
-Output: data/clean/af/af_ads_focus.jsonl (Endast relevanta Data/IT-jobb)
+Syfte: Detta skript agerar 'Silver Layer' i vår pipeline. 
+Det tar rådata (JSONL) från Arbetsförmedlingen, filtrerar ut irrelevanta annonser och taggar upp kompetenser (skills)
+Input: data/raw/{YEAR}_full_year.jsonl 
+Output: data/clean/af/af_ads_focus_full_year_{YEAR}.jsonl
+
+Uppdatering: Nu med extrahering av 'year' och 'publication_date'.
 """
 
 # =========================
@@ -76,7 +78,7 @@ def get_text_tokens(text: str) -> Set[str]:
 # 3. Core Logic (The Brain)
 # =========================
 def is_data_it_ad(ad: Dict[str, Any]) -> bool:
-    """Dörrvakten: Är detta en Data/IT-annons?"""
+    """Dörrvakten: Är det en Data/IT-annons?"""
     occ = ad.get("occupation_field")
     if not occ:
         return False
@@ -111,7 +113,7 @@ def tag_ad(text: str, config: TaxonomyConfig) -> Tuple[List[str], List[str]]:
                 if kw in tokens:
                     found_hits.append(kw)
                     tag_match = True
-            # 2. Fras-matchning (substring)
+            # 2. Fras matchning (substring)
             else:
                 if kw in text:
                     found_hits.append(kw)
@@ -127,11 +129,8 @@ def is_focus_ad(
     text: str, tags: List[str], hits: List[str], config: TaxonomyConfig
 ) -> bool:
     """
-    Avgör om annonsen är "Focus" (Värd att analysera).
-    Krav:
-    1. Inga exkluderade fraser (t.ex "support")
-    2. Har minst en tagg
-    3. Har minst en "stark" hit (inte bara "api" eller "server")
+    Avgör om annonsen är "Focus" (Värd att analysera)
+    Inga exkluderade fraser (t.ex "support")
     """
     # 1. Check Excludes
     for phrase in config.exclude_phrases:
@@ -151,7 +150,6 @@ def is_focus_ad(
 # 4. Pipeline (The Runner)
 # =========================
 
-
 def process_ads(input_path: Path, output_raw: Path, output_focus: Path, tax_path: Path):
     print(f"Starting pipeline...")
     print(f"Input: {input_path}")
@@ -160,10 +158,10 @@ def process_ads(input_path: Path, output_raw: Path, output_focus: Path, tax_path
     config = load_taxonomy_and_config(tax_path)
     stats = RunStats()
 
-    # Öppna filerna
+    # Skapa folder om den inte redan finns
     output_raw.parent.mkdir(parents=True, exist_ok=True)
 
-    # Öppnar output-filerna direkt för streaming-skrivning (sparar minne)
+    # Öppnar output filerna direkt för streamad skrivning (sparar minne)
     with open(input_path, "r", encoding="utf-8") as fin, open(
         output_raw, "w", encoding="utf-8"
     ) as f_raw, open(output_focus, "w", encoding="utf-8") as f_focus:
@@ -184,62 +182,78 @@ def process_ads(input_path: Path, output_raw: Path, output_focus: Path, tax_path
                 stats.skipped_not_data_it += 1
                 continue
 
-            # --- STEP 2: Transform & Tag ---
-            # Extrahera text
+            # --- STEP 2: Transform + Tag ---
             title = str(ad.get("headline") or ad.get("title") or "").lower()
-            desc = str(ad.get("description") or ad.get("text") or "").lower()
-            full_text = f"{title} {desc}"  # Normalized i lower() ovan
+            # Hantera description som ibland är dict, ibland sträng
+            desc_raw = ad.get("description")
+            if isinstance(desc_raw, dict):
+                desc = str(desc_raw.get("text", "")).lower()
+            else:
+                desc = str(desc_raw or "").lower()
+                
+            full_text = f"{title} {desc}"
 
-            # Tagga
             tags, hits = tag_ad(full_text, config)
+
+            # --- DATE EXTRACTION LOGIC (NEWLY ADDED!!) ---
+            pub_date = str(ad.get("publication_date", ""))
+            # Default to 2025 if missing
+            year = 2025 
+            if pub_date and len(pub_date) >= 4:
+                # Plocka första 4 tecknen (BÖR funka för "2024-..." och "2020 00...")
+                candidate = pub_date[:4]
+                if candidate.isdigit():
+                    year = int(candidate)
 
             # Bygg Clean Record
             clean_record = {
                 "id": ad.get("id") or ad.get("external_id"),
+                "source": "af_api",
+                "year": year,                          # <--- NYTT FÄLT
+                "publication_date": pub_date,          # <--- NYTT FÄLT
                 "title": ad.get("headline") or ad.get("title"),
-                "description_limit": full_text[:200],  # Preview för debug
+                "description_limit": full_text[:200],
                 "tags": tags,
                 "hits": hits,
                 "url": ad.get("webpage_url", ""),
             }
 
-            # --- STEP 3: Write Silver Raw (Alla Data/IT) ---
+            # --- STEP 3: Write Silver Raw ---
             f_raw.write(json.dumps(clean_record, ensure_ascii=False) + "\n")
             stats.written_silver_raw += 1
-
-            # --- STEP 4: Focus Filter (Silver Refined) ---
+            # --- STEP 4: Focus Filter ---
             if is_focus_ad(full_text, tags, hits, config):
                 f_focus.write(json.dumps(clean_record, ensure_ascii=False) + "\n")
                 stats.written_silver_focus += 1
                 stats.top_tags.update(tags)
 
     # Summary
-    print(f"\nDONE!")
-    print(f"Read Rows:       {stats.read}")
-    print(f"Data/IT Ads:     {stats.written_silver_raw}")
-    print(f"Focus Ads:       {stats.written_silver_focus} (The focus area)")
-    print(f"Noise Filtered:  {stats.skipped_not_data_it}")
-
     if stats.written_silver_raw:
         rate = (stats.written_silver_focus / stats.written_silver_raw) * 100
-        print(f"Focus Rate:      {rate:.1f}%")
-
-    print("\n Top Skills (Focus Group):")
-    for tag, count in stats.top_tags.most_common(10):
-        print(f" - {tag}: {count}")
+        print(f"   -> Focus Rate: {rate:.1f}% ({stats.written_silver_focus} ads)")
+    else:
+        print("   -> No Data/IT ads found.")
 
 
 # =========================
-# 5. Main
+# 5. Main (Batch Runner)
 # =========================
 if __name__ == "__main__":
-    # Paths
-    BASE_DIR = Path(__file__).parent.parent.parent  # Anpassa om det behövs
-    # Justera sökvägarna om vi flyttar/kör från 'src/transform' eller root
-    IN_FILE = Path("data/raw/2020_full_year.jsonl")
+    # Paths setup
+    BASE_DIR = Path(__file__).parent.parent.parent
     TAX_FILE = Path("sql/mappings/keyword_taxonomy.json")
 
-    OUT_RAW = Path("data/clean/af/af_ads_datait_full_year_2020.jsonl")
-    OUT_FOCUS = Path("data/clean/af/af_ads_focus_full_year_2020.jsonl")
+    # Lista åren vi vill köra
+    YEARS_TO_PROCESS = [2020, 2021, 2022, 2023, 2024, 2025]
 
-    process_ads(IN_FILE, OUT_RAW, OUT_FOCUS, TAX_FILE)
+    print("========================================")
+
+    for year in YEARS_TO_PROCESS:
+        in_file = Path(f"data/raw/{year}_full_year.jsonl")
+        out_raw = Path(f"data/clean/af/af_ads_datait_full_year_{year}.jsonl")
+        out_focus = Path(f"data/clean/af/af_ads_focus_full_year_{year}.jsonl")
+
+        process_ads(in_file, out_raw, out_focus, TAX_FILE)
+
+    print("\n ALL YEARS PROCESSED!")
+    print("Next step: Run 'cat data/clean/af/af_ads_focus_full_year_*.jsonl > data/clean/af/all_years_focus_master.jsonl'") 
