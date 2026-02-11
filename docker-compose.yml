@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: skillgap_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: skillgap
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      # Kör SQL fil automatiskt vid första uppstart
+      - ./sql/schema:/docker-entrypoint-initdb.d
+
+volumes:
+  pg_data:
